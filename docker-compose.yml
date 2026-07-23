@@ -103,6 +103,39 @@ services:
     networks:
       - ssd-net
 
+  # --- SonarQube first-time setup: force admin password change via Web API ---
+  # SonarQube has no env var for the admin password, so it must be set through
+  # the API (or the UI). This container waits for SonarQube to report UP, then
+  # changes admin's password from the default to the required value.
+  sonar-init:
+    image: curlimages/curl:latest
+    container_name: sonar-init
+    depends_on:
+      - sonarqube
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Waiting for SonarQube to report UP...";
+        until curl -sf http://sonarqube:9000/api/system/status | grep -q '"status":"UP"'; do
+          echo "  still starting...";
+          sleep 5;
+        done;
+        echo "SonarQube is UP. Setting admin password...";
+        # SonarQube requires at least one uppercase character in the password,
+        # so the domain is capitalised. Email domains are case-insensitive,
+        # so this is still the same SIT address.
+        curl -i -u admin:admin -X POST http://sonarqube:9000/api/users/change_password \
+          --data-urlencode "login=admin" \
+          --data-urlencode "previousPassword=admin" \
+          --data-urlencode "password=2400943@SIT.singaporetech.edu.sg";
+        echo "";
+        echo "If the response above is 204, the password was set.";
+        echo "A 401 means it was already changed previously - that is fine.";
+    networks:
+      - ssd-net
+
 networks:
   ssd-net:
     driver: bridge

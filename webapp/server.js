@@ -1,11 +1,14 @@
 import express from 'express';
 import mysql from 'mysql2/promise';
-import fs from 'fs';
+import fs from 'node:fs';
 import { checkPolicy } from './validate.js';
 
 const STUDENT_ID = '2400943';
 const app = express();
 let db;
+
+// Do not disclose the framework/version in response headers
+app.disable('x-powered-by');
 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
