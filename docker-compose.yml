@@ -1,0 +1,116 @@
+services:
+  # --- Web application (replaces nginx) ---
+  webapp:
+    build: ./webapp
+    container_name: webapp
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    environment:
+      DB_HOST: mysqldb
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: ssddb
+    volumes:
+      - ./db/common-passwords.txt:/data/common-passwords.txt:ro
+    depends_on:
+      - mysqldb
+    networks:
+      - ssd-net
+
+  # --- Database (common passwords + created users) ---
+  mysqldb:
+    image: mysql:8.0
+    container_name: mysqldb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: ssddb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - ssd-net
+
+  # --- Local Git server (Q3) ---
+  git-server:
+    build:
+      context: .
+      dockerfile: gitserver.Dockerfile
+    container_name: git-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./repos:/var/www/git
+    networks:
+      - ssd-net
+
+  # --- Jenkins (CI/CD) ---
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    restart: unless-stopped
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - ssd-net
+
+  # --- SonarQube database ---
+  sonarqube-db:
+    image: postgres:15
+    container_name: sonarqube-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonarqube_db_data:/var/lib/postgresql/data
+    networks:
+      - ssd-net
+
+  # --- SonarQube ---
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    restart: unless-stopped
+    depends_on:
+      - sonarqube-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - ssd-net
+
+networks:
+  ssd-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  jenkins_home:
+  sonarqube_db_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

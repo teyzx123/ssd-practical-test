@@ -1,0 +1,8 @@
+FROM node:alpine
+RUN apk add --no-cache tini git \
+    && npm install -g yarn git-http-server \
+    && adduser -D -g git git
+USER git
+WORKDIR /home/git
+RUN git init --bare repository.git
+ENTRYPOINT ["tini", "--", "git-http-server", "-p", "3000", "/home/git"]

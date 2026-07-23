@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Create account</title></head>
+<body>
+  <h1>Create account</h1>
+  <p id="error" style="color:red"><%= error || '' %></p>
+  <p>Password must be 8-128 characters and must not appear in a known breached password list.</p>
+  <form method="post" action="/register">
+    <p><label>Username <input name="username" required></label></p>
+    <p><label>Password <input name="password" type="password" required></label></p>
+    <button type="submit">Create account</button>
+  </form>
+  <p><a href="/">Back to login</a></p>
+  <script src="/validate-client.js"></script>
+</body>
+</html>

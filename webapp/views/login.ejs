@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Login</title></head>
+<body>
+  <h1>Login</h1>
+  <p id="error" style="color:red"><%= error || '' %></p>
+  <form method="post" action="/login">
+    <p><label>Username <input name="username" required></label></p>
+    <p><label>Password <input name="password" type="password" required></label></p>
+    <button type="submit">Login</button>
+  </form>
+  <p><a href="/register">Create an account</a></p>
+  <script src="/validate-client.js"></script>
+</body>
+</html>
