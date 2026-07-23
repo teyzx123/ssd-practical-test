@@ -13,7 +13,7 @@ app.use(express.static('public'));
 
 // ---------- database ----------
 async function connect() {
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     try {
       const pool = mysql.createPool({
         host: process.env.DB_HOST,
@@ -34,18 +34,25 @@ async function connect() {
 
 // load the NCSC 100k common-password list once
 async function seedCommonPasswords() {
-  const [[row]] = await db.query('SELECT COUNT(*) AS n FROM common_passwords');
-  if (row.n > 0) return console.log(`common_passwords already loaded (${row.n})`);
+  try {
+    const [[row]] = await db.query('SELECT COUNT(*) AS n FROM common_passwords');
+    if (row.n > 0) return console.log(`common_passwords already loaded (${row.n})`);
 
-  const file = '/data/common-passwords.txt';
-  if (!fs.existsSync(file)) return console.warn('common-passwords.txt not found - skipping seed');
+    const file = '/data/common-passwords.txt';
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      return console.warn('common-passwords.txt missing - breach check will be empty');
+    }
 
-  const list = fs.readFileSync(file, 'utf8').split('\n').map(s => s.trim()).filter(Boolean);
-  for (let i = 0; i < list.length; i += 5000) {
-    await db.query('INSERT IGNORE INTO common_passwords (password) VALUES ?',
-      [list.slice(i, i + 5000).map(p => [p])]);
+    const list = fs.readFileSync(file, 'utf8').split('\n').map(s => s.trim()).filter(Boolean);
+    for (let i = 0; i < list.length; i += 5000) {
+      await db.query('INSERT IGNORE INTO common_passwords (password) VALUES ?',
+        [list.slice(i, i + 5000).map(p => [p])]);
+    }
+    console.log(`seeded ${list.length} common passwords`);
+  } catch (err) {
+    // never let seeding stop the app from starting
+    console.error('seeding failed:', err.message);
   }
-  console.log(`seeded ${list.length} common passwords`);
 }
 
 async function isCommon(password) {
